@@ -1,10 +1,10 @@
 // 1. Importamos los modulos necesarios
-const http = ('http');
+const http = require('http');
 // Importamos la version nativa de promesas del dirver para poder usar async/await de forma limpia
 const mysql = require('mysql2/promise');
 
 // 2. CONFIGURACION DE LA CONEXION A MYSQL
-// Creamos un "Pool" de conexiones directas a la base de daatos real
+// Creamos un "Pool" de conexiones directas a la base de datos real
 const pool = mysql.createPool({
     host: 'localhost',      // Cambiar por 'db' si corre dentro de la red interna de Docker
     user: 'root',
@@ -132,11 +132,54 @@ const server = http.createServer(async (req, res) => {
     }
 
     // RUTA 4: Eliminar tarea (DELETE /tasks/:id)
+    if (req.url.startsWith('/tasks/') && req.method === 'DELETE') {
+        const urlParts = req.url.split('/');
+        const taskId = parseInt(urlParts[2]);
 
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
 
+        req.on('end', async () => {
+            try {
+                const { author } = JSON.parse(body);
 
+                // Paso A: Consultar a MySQL si la tarea existe y quién es el dueño
+                const [rows] = await pool.query('SELECT author FROM tasks WHERE id = ?', [taskId]);
 
+                if (rows.length === 0) {
+                    res.writeHead(404, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'error', message: 'La tarea no existe en la BD' }));
+                    return;
+                }
 
+                const task = rows[0];
 
+                // Lógica de protección: Comparamos el autor del JSON con el autor de la fila de MySQL
+                if (task.author !== author) {
+                    res.writeHead(403, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'error', message: `No autorizado. La tarea le pertenece a ${task.author}` }));
+                    return;
+                }
 
+                // Paso B: Si pasa el filtro, ejecutamos el borrado físico en la tabla
+                await pool.query('DELETE FROM tasks WHERE id = ?', [taskId]);
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'success', data: null }));
+            } catch (error) {
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ status: 'error', message: 'Fallo al eliminar de la BD: ' + error.message }));
+            }
+        });
+        return;
+    }
+
+    // 404 - Ruta no encontrada
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'error', message: 'Endpoint no encontrado' }));
+});
+
+const PORT = 3000;
+server.listen(PORT, () => {
+  console.log(` Servidor Vanilla con MySQL real corriendo en http://localhost:${PORT}`);
 });
