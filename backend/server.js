@@ -10,7 +10,7 @@ const pool = mysql.createPool({
     user: 'root',
     password: 'root',
     database: 'todo_db',
-    waitFOrConnections: true,
+    waitForConnections: true,
     connectionLimit: 10
 });
 
@@ -22,7 +22,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS'){
+    if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
         return;
@@ -30,25 +30,25 @@ const server = http.createServer(async (req, res) => {
 
     // ENRUTADOR NATIVO CON CONSULTAS SQL REALES
 
-    // RUTA 1: Obtener tareas (GET/Tasks)
+    // RUTA 1: Obtener tareas (GET/tasks)
     if (req.url === '/tasks' && req.method === 'GET') {
         try {
             // Ejecutamos una consulta SQL directa usando interpolacion controlada del driver
-            const [rows] = await pool.quiery('SELECT * FROM tasks');
+            const [rows] = await pool.query('SELECT * FROM tasks');
 
-            res.writeHead(200, {'Content-Type': 'application/json' });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
                 status: 'success',
-                data: { tasks: rows}
+                data: { tasks: rows }
             }));
         }   catch (error) {
-            res.writeHead(500, {'Content-Type': 'application/json' });
+            res.writeHead(500, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'error', message: 'Error en MySQL: ' + error.message }));
         }
         return;
     }
 
-    // RUTA 2: Crear tarea (POST/Tasks)
+    // RUTA 2: Crear tarea (POST/tasks)
     if (req.url === '/tasks' && req.method === 'POST') {
         let body = '';
 
@@ -62,7 +62,7 @@ const server = http.createServer(async (req, res) => {
 
                 if (!title || !author) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({status: 'error', message: 'Titulo y autor obligatorios'}));
+                    res.end(JSON.stringify({ status: 'error', message: 'Titulo y autor obligatorios' }));
                     return;
                 }
                 
@@ -72,14 +72,14 @@ const server = http.createServer(async (req, res) => {
 
                 // Construimos el objeto de respuesta usando el ID auto-incremental que genero MySQL
                 const newTask = {
-                    id: result.insertID,
+                    id: result.insertId,
                     title,
                     description: description || null,
                     author,
                     is_completed: 0
                 };
 
-                res.writeHead(201, { 'Content-Type': 'application/json'});
+                res.writeHead(201, { 'Content-Type': 'application/json' });
                 res.end(JSON,stringify({ status: 'success', data: { task: newTask }}));
             }   catch (error) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
