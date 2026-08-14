@@ -4,11 +4,11 @@ const http = require('http');
 const mysql = require('mysql2/promise');
 
 // 2. CONFIGURACION DE LA CONEXION A MYSQL
-// Creamos un "Pool" de conexiones directas a la base de datos real
+// En este caso creamos un nuevo user como buena practica
 const pool = mysql.createPool({
-    host: 'localhost',      // Cambiar por 'db' si corre dentro de la red interna de Docker
-    user: 'root',
-    password: 'root',
+    host: 'localhost',
+    user: 'app_tareas',           // El usuario que acabo de crear
+    password: 'App_Tareas2026*',  // <-- Contraseña del nuevo user
     database: 'todo_db',
     waitForConnections: true,
     connectionLimit: 10
@@ -80,7 +80,8 @@ const server = http.createServer(async (req, res) => {
                 };
 
                 res.writeHead(201, { 'Content-Type': 'application/json' });
-                res.end(JSON,stringify({ status: 'success', data: { task: newTask }}));
+                // SOLUCIÓN: Se cambió la coma por un punto en JSON.stringify
+                res.end(JSON.stringify({ status: 'success', data: { task: newTask }}));
             }   catch (error) {
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ status: 'error', message: 'Fallo al insertar: ' + error.message}));
